@@ -1,0 +1,35 @@
+[package]
+name = "ethers-ffi"
+license = "MIT OR Apache-2.0"
+version = "0.13.0"
+authors = ["Connor McEwen <connor.mcewen@gmail.com>"]
+edition = "2021"
+description = "FFI functions for the ethers-rs crate"
+homepage = "https://docs.rs/ethers"
+repository = "https://github.com/gakonst/ethers-rs"
+keywords = ["ethereum", "web3", "celo", "ethers"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lib]
+crate-type = ["lib", "staticlib"]
+name = "ethers_ffi"
+
+[dependencies]
+ethers-core = { version = "^0.13.0", path = "../ethers-core", default-features = false }
+ethers-signers = { version = "^0.13.0", path = "../ethers-signers", default-features = false }
+libc= { version = "0.2.104", default-features = false }
+opaque-pointer = "0.8.6"
+rand = "0.8.5"
+coins-bip32 = '0.6.0'
+coins-bip39 = '0.6.0'
+k256 = {version = '0.10.4', features = ['ecdsa']}
+ffi-convert = '0.5.0'
+futures-executor = "0.3.21"
+hex = { version = "0.4.3", default-features = false }
+
+[dev-dependencies]
+cargo-lipo = ">=3.2.0"
+cbindgen = "0.24.3" 

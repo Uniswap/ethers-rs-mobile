@@ -22,6 +22,7 @@ members = [
     "ethers-middleware",
     "ethers-etherscan",
     "ethers-solc",
+    "ethers-ffi",
     "examples/ethers-wasm",
 ]
 
@@ -105,6 +106,8 @@ tokio = { version = "1.18", features = ["macros", "rt-multi-thread"] }
 hex = "0.4.3"
 bytes = "1.1.0"
 
+[patch.crates-io]
+coins-bip32 = { git = 'ssh://git@github.com/Uniswap/bitcoin-rs' }
 
 # profile for the wasm example
 [profile.release.package.ethers-wasm]
