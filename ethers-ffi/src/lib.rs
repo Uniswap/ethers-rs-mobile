@@ -190,7 +190,6 @@ pub extern "C" fn sign_hash_with_wallet(
     wallet_ptr: *const LocalWallet,
     hash: *const c_char,
     chain_id: u64,
-    eip155: bool,
 ) -> *mut c_char {
     let wallet = unsafe { opaque_pointer::object(wallet_ptr) }.unwrap();
     let hash_c_str = unsafe {
