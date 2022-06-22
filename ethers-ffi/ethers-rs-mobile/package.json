@@ -1,0 +1,6 @@
+{
+  "name": "@uniswap/ethers-rs-mobile",
+  "version": "0.0.1",
+  "license": "MIT",
+  "description": "ethers-rs for mobile"
+}

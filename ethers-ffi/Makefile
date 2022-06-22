@@ -7,7 +7,7 @@ ARCHS_IOS = x86_64-apple-ios aarch64-apple-ios
 ARCHS_ANDROID = aarch64-linux-android armv7-linux-androideabi arm-linux-androideabi i686-linux-android x86_64-linux-android
 NDK_STANDALONE = ./NDK
 ANDROID_DEST = ./react-native/android/app/src/main/jniLibs
-IOS_DEST = ./ios
+IOS_DEST = ./ethers-rs-mobile/ios
 CARGO_PARAMS = --no-default-features
 
 TARGET_DIR = ../target
