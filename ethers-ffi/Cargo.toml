@@ -14,7 +14,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
-crate-type = ["lib", "staticlib"]
+crate-type = ["staticlib", "cdylib"] # iOS uses staticlib, Android uses cdylib
 name = "ethers_ffi"
 
 [dependencies]
@@ -32,4 +32,4 @@ hex = { version = "0.4.3", default-features = false }
 
 [dev-dependencies]
 cargo-lipo = ">=3.2.0"
-cbindgen = "0.24.3" 
+cbindgen = "0.24.3"
