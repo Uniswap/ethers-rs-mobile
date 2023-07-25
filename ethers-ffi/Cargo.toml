@@ -13,6 +13,9 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[target.'cfg(target_os="android")'.dependencies]
+jni = { version = "0.5", default-features = false }
+
 [lib]
 crate-type = ["staticlib", "cdylib"] # iOS uses staticlib, Android uses cdylib
 name = "ethers_ffi"
@@ -29,6 +32,8 @@ k256 = {version = '0.10.4', features = ['ecdsa']}
 ffi-convert = '0.5.0'
 futures-executor = "0.3.21"
 hex = { version = "0.4.3", default-features = false }
+android_logger = "0.8.1"
+log = "0.4.14"
 
 [dev-dependencies]
 cargo-lipo = ">=3.2.0"

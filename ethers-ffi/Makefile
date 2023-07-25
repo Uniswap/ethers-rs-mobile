@@ -6,7 +6,7 @@ SO = $(NAME).so
 ARCHS_IOS = x86_64-apple-ios aarch64-apple-ios
 ARCHS_ANDROID = aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 NDK_STANDALONE = ~/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64
-ANDROID_DEST = ./ethers-rs-mobile/android/jniLibs
+ANDROID_DEST = /Users/thomas.thachil/code/wallet-internal/apps/mobile/android/app/src/main/jniLibs
 IOS_DEST = ./ethers-rs-mobile/ios
 CARGO_PARAMS = --no-default-features 
 
