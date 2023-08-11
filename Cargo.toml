@@ -107,7 +107,7 @@ hex = "0.4.3"
 bytes = "1.1.0"
 
 [patch.crates-io]
-coins-bip32 = { git = 'ssh://git@github.com/Uniswap/bitcoin-rs' }
+coins-bip32 = { git = 'ssh://git@github.com/Uniswap/bitcoin-rs.git' }
 
 # profile for the wasm example
 [profile.release.package.ethers-wasm]

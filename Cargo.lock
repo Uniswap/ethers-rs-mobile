@@ -604,7 +604,7 @@ dependencies = [
 [[package]]
 name = "coins-bip32"
 version = "0.6.0"
-source = "git+ssh://git@github.com/Uniswap/bitcoin-rs#ded4619e238243e1c55d79fc916f17505bea58d9"
+source = "git+ssh://git@github.com/Uniswap/bitcoin-rs.git#ded4619e238243e1c55d79fc916f17505bea58d9"
 dependencies = [
  "bincode",
  "bs58",
