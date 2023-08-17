@@ -304,20 +304,11 @@ pub mod android {
 
     #[no_mangle]
     pub extern "system" fn Java_com_uniswap_RnEthersRs_00024Companion_privateKeyFromMnemonic(env: JNIEnv, _class: JClass, mnemonic: JString, index: jlong) -> jobject {
-        let _ = android_logger::init_once(android_logger::Config::default().with_min_level(log::Level::Trace));
-        log::info!("Java_com_uniswap_RnEthersRs_00024Companion_privateKeyFromMnemonic");
-
         let mnemonic_str: String = env.get_string(mnemonic).expect("Couldn't get java string!").into();
-        log::info!("mnemonic_str: {}", mnemonic_str);
         let mnemonic_cstring = CString::new(mnemonic_str).expect("Failed to create CString");
-        log::info!("mnemonic_cstring: {:?}", mnemonic_cstring);
         let mnemonic_ptr = mnemonic_cstring.as_ptr() as *const c_char;
-        log::info!("mnemonic_ptr: {:?}", mnemonic_ptr);
+
         let private_key_struct = private_key_from_mnemonic(mnemonic_ptr, index as u32);
-        log::info!("private_key_struct: {:?}", private_key_struct.private_key);
-
-
-
 
         let class_name = "com/uniswap/CPrivateKey";
         let class = env
@@ -327,13 +318,10 @@ pub mod android {
         // Convert the mnemonic and address fields to Rust String
         let private_key = unsafe { CStr::from_ptr(private_key_struct.private_key).to_string_lossy().into_owned() };
         let address = unsafe { CStr::from_ptr(private_key_struct.address).to_string_lossy().into_owned() };
-        log::info!("private_key: {:?}", private_key);
-        log::info!("address: {:?}", address);
+
         // Convert the Rust String to UTF-8 encoded C string
         let private_key_cstring = CString::new(private_key.clone()).expect("Failed to create CString for mnemonic");
         let address_cstring = CString::new(address.clone()).expect("Failed to create CString for address");
-        log::info!("private_key_cstring: {:?}", private_key_cstring);
-        log::info!("address_cstring: {:?}", address_cstring);
 
         // Create a new Java string from the UTF-8 encoded C string
         let private_key_jstring = env
@@ -350,11 +338,8 @@ pub mod android {
         let private_key_box = Box::new(private_key_struct);
         let private_key_ptr = Box::into_raw(private_key_box);
     
-        log::info!("private_key_ptr: {:?}", private_key_ptr);
         // Cast the raw pointer to a jlong, which is a pointer to a JLong object
         let handle = private_key_ptr as jlong;
-        log::info!("handle: {:?}", handle);
-
 
         // Create a new instance of CMnemonicAndAddress
         let object = env

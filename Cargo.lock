@@ -59,24 +59,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "android_log-sys"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8052e2d8aabbb8d556d6abbcce2a22b9590996c5f849b9c7ce4544a2e3b984e"
-
-[[package]]
-name = "android_logger"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cbd542dd180566fad88fd2729a53a62a734843c626638006a9d63ec0688484e"
-dependencies = [
- "android_log-sys",
- "env_logger 0.7.1",
- "lazy_static",
- "log 0.4.14",
-]
-
-[[package]]
 name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1212,16 +1194,6 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
-dependencies = [
- "log 0.4.14",
- "regex",
-]
-
-[[package]]
-name = "env_logger"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
@@ -1473,7 +1445,6 @@ dependencies = [
 name = "ethers-ffi"
 version = "0.13.0"
 dependencies = [
- "android_logger",
  "cargo-lipo",
  "cbindgen",
  "coins-bip32",
@@ -1486,7 +1457,6 @@ dependencies = [
  "jni",
  "k256",
  "libc",
- "log 0.4.14",
  "opaque-pointer",
  "rand 0.8.5",
 ]
