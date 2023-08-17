@@ -252,82 +252,122 @@ pub mod android {
     use self::jni::objects::{JClass, JString, JValue, JObject};
     use self::jni::sys::{jlong, jobject, jstring};
 
-    // Function to generate a mnemonic
     #[no_mangle]
-    pub extern "system" fn Java_com_uniswap_RnEthersRs_00024Companion_generateMnemonic(env: JNIEnv, _class: JClass) -> jobject {
-        // Generate a mnemonic struct
+    pub extern "system" fn Java_com_uniswap_RnEthersRs_00024Companion_generateMnemonic(env: JNIEnv, _class: JClass) -> jobject{
         let mnemonic_struct = generate_mnemonic();
 
-        // Define the class name
         let class_name = "com/uniswap/CMnemonicAndAddress";
+        let class = env
+            .find_class(class_name)
+            .expect(&format!("Failed to find class: {}", class_name));
 
-        // Find the class in the JNI environment
-        let class = env.find_class(class_name).expect("Failed to find class");
-
-        // Convert the mnemonic and address fields to Rust String
+            // Convert the mnemonic and address fields to Rust String
         let mnemonic = unsafe { CStr::from_ptr(mnemonic_struct.mnemonic).to_string_lossy().into_owned() };
         let address = unsafe { CStr::from_ptr(mnemonic_struct.address).to_string_lossy().into_owned() };
 
-        // Create a new Java string from the Rust String
-        let mnemonic_jstring = env.new_string(&mnemonic).expect("Failed to create Java string from mnemonic");
-        let address_jstring = env.new_string(&address).expect("Failed to create Java string from address");
+        // Convert the Rust String to UTF-8 encoded C string
+        let mnemonic_cstring = CString::new(mnemonic.clone()).expect("Failed to create CString for mnemonic");
+        let address_cstring = CString::new(address.clone()).expect("Failed to create CString for address");
 
-        // Create a Box that owns the mnemonic_struct. Box is a smart pointer that allocates data on the heap.
+        // Create a new Java string from the UTF-8 encoded C string
+        let mnemonic_jstring = env
+            .new_string(mnemonic_cstring.to_str().expect("Invalid UTF-8 in mnemonic"))
+            .expect("Failed to create Java string from mnemonic");
+
+        let address_jstring = env
+            .new_string(address_cstring.to_str().expect("Invalid UTF-8 in address"))
+            .expect("Failed to create Java string from address");
+
+        // Create a Box that owns the mnemonic_struct (box) is a smart pointer that allocates data on the heap).
         // When this Box is dropped (goes out of scope), it will deallocate the mnemonic_struct as well.
         let mnemonic_box = Box::new(mnemonic_struct);
+        let mnemonic_ptr = Box::into_raw(mnemonic_box);
+    
+        // Cast the raw pointer to a jlong, which is a pointer to a JLong object
+        let handle = mnemonic_ptr as jlong;
 
-        // Convert the Box into a raw pointer and cast it to jlong
-        let handle = Box::into_raw(mnemonic_box) as jlong;
-
-        // Create a new instance of CMnemonicAndAddress
-        let object = env.new_object(
-            class,
-            "(Ljava/lang/String;Ljava/lang/String;J)V",
-            &[JValue::Object(JObject::from(mnemonic_jstring).into()), JValue::Object(JObject::from(address_jstring).into()), JValue::Long(handle)],
-        ).expect("Failed to create CMnemonicAndAddress object");
-
-        // Return the underlying jobject, which is a raw pointer to the Java object.
+        let object = env
+            .new_object(
+                class,
+                "(Ljava/lang/String;Ljava/lang/String;J)V",
+                &[
+                    JValue::Object(JObject::from(mnemonic_jstring).into()), 
+                    JValue::Object(JObject::from(address_jstring).into()),
+                    JValue::Long(handle)
+                ],
+            )
+            .expect("Failed to create CMnemonicAndAddress object");
+        
+        //consume the JObject and return the underlying jobject, which is a raw pointer to the Java object.
         object.into_inner()
     }
 
-    // Function to get private key from mnemonic
     #[no_mangle]
     pub extern "system" fn Java_com_uniswap_RnEthersRs_00024Companion_privateKeyFromMnemonic(env: JNIEnv, _class: JClass, mnemonic: JString, index: jlong) -> jobject {
-        // Convert the mnemonic from Java string to Rust String
+        let _ = android_logger::init_once(android_logger::Config::default().with_min_level(log::Level::Trace));
+        log::info!("Java_com_uniswap_RnEthersRs_00024Companion_privateKeyFromMnemonic");
+
         let mnemonic_str: String = env.get_string(mnemonic).expect("Couldn't get java string!").into();
+        log::info!("mnemonic_str: {}", mnemonic_str);
+        let mnemonic_cstring = CString::new(mnemonic_str).expect("Failed to create CString");
+        log::info!("mnemonic_cstring: {:?}", mnemonic_cstring);
+        let mnemonic_ptr = mnemonic_cstring.as_ptr() as *const c_char;
+        log::info!("mnemonic_ptr: {:?}", mnemonic_ptr);
+        let private_key_struct = private_key_from_mnemonic(mnemonic_ptr, index as u32);
+        log::info!("private_key_struct: {:?}", private_key_struct.private_key);
 
-        // Get the private key from the mnemonic
-        let private_key_struct = private_key_from_mnemonic(mnemonic_str.as_ptr() as *const c_char, index as u32);
 
-        // Define the class name
+
+
         let class_name = "com/uniswap/CPrivateKey";
+        let class = env
+            .find_class(class_name)
+            .expect(&format!("Failed to find class: {}", class_name));
 
-        // Find the class in the JNI environment
-        let class = env.find_class(class_name).expect("Failed to find class");
-
-        // Convert the private key and address fields to Rust String
+        // Convert the mnemonic and address fields to Rust String
         let private_key = unsafe { CStr::from_ptr(private_key_struct.private_key).to_string_lossy().into_owned() };
         let address = unsafe { CStr::from_ptr(private_key_struct.address).to_string_lossy().into_owned() };
+        log::info!("private_key: {:?}", private_key);
+        log::info!("address: {:?}", address);
+        // Convert the Rust String to UTF-8 encoded C string
+        let private_key_cstring = CString::new(private_key.clone()).expect("Failed to create CString for mnemonic");
+        let address_cstring = CString::new(address.clone()).expect("Failed to create CString for address");
+        log::info!("private_key_cstring: {:?}", private_key_cstring);
+        log::info!("address_cstring: {:?}", address_cstring);
 
-        // Create a new Java string from the Rust String
-        let private_key_jstring = env.new_string(&private_key).expect("Failed to create Java string from private key");
-        let address_jstring = env.new_string(&address).expect("Failed to create Java string from address");
+        // Create a new Java string from the UTF-8 encoded C string
+        let private_key_jstring = env
+            .new_string(private_key_cstring.to_str().expect("Invalid UTF-8 in mnemonic"))
+            .expect("Failed to create Java string from mnemonic");
 
-        // Create a Box that owns the private_key_struct. Box is a smart pointer that allocates data on the heap.
-        // When this Box is dropped (goes out of scope), it will deallocate the private_key_struct as well.
+
+        let address_jstring = env
+            .new_string(address_cstring.to_str().expect("Invalid UTF-8 in address"))
+            .expect("Failed to create Java string from address");
+
+        // Create a Box that owns the prv struct (box) is a smart pointer that allocates data on the heap).
+        // When this Box is dropped (goes out of scope), it will deallocate  prv as well.
         let private_key_box = Box::new(private_key_struct);
+        let private_key_ptr = Box::into_raw(private_key_box);
+    
+        log::info!("private_key_ptr: {:?}", private_key_ptr);
+        // Cast the raw pointer to a jlong, which is a pointer to a JLong object
+        let handle = private_key_ptr as jlong;
+        log::info!("handle: {:?}", handle);
 
-        // Convert the Box into a raw pointer and cast it to jlong
-        let handle = Box::into_raw(private_key_box) as jlong;
 
-        // Create a new instance of CPrivateKey
-        let object = env.new_object(
-            class,
-            "(Ljava/lang/String;Ljava/lang/String;J)V",
-            &[JValue::Object(JObject::from(private_key_jstring).into()), JValue::Object(JObject::from(address_jstring).into()), JValue::Long(handle)],
-        ).expect("Failed to create CPrivateKey object");
-
-        // Return the underlying jobject, which is a raw pointer to the Java object.
+        // Create a new instance of CMnemonicAndAddress
+        let object = env
+            .new_object(
+                class,
+                "(Ljava/lang/String;Ljava/lang/String;J)V",
+                &[
+                    JValue::Object(JObject::from(private_key_jstring).into()), 
+                    JValue::Object(JObject::from(address_jstring).into()),
+                    JValue::Long(handle)
+                ],
+            )
+            .expect("Failed to create CPrivateKey object");
         object.into_inner()
     }
 
@@ -367,7 +407,7 @@ pub mod android {
 
     // Function to get a wallet from a private key
     #[no_mangle]
-    pub extern "system" fn Java_com_uniswap_RnEthersRs_00024Companion_walletFromPrivateKey(env: JNIEnv, _class: JClass, private_key: JString) {
+    pub extern "system" fn Java_com_uniswap_RnEthersRs_00024Companion_walletFromPrivateKey(env: JNIEnv, _class: JClass, private_key: JString)  -> u64 {
         // Convert the JString to a Rust String
         let private_key: String = env.get_string(private_key).expect("Couldn't get java string!").into();
 
@@ -376,9 +416,8 @@ pub mod android {
 
         // Get a wallet from the private key
         let wallet_ptr = wallet_from_private_key(private_key_str.as_ptr() as *const c_char);
-
-        // Convert the raw pointer to a mutable reference
-        let local_wallet: &mut LocalWallet = unsafe { &mut *wallet_ptr };
+        let wallet_ptr_long: u64 = wallet_ptr as u64;
+        wallet_ptr_long
     }
 
     // Function to free the wallet
@@ -393,19 +432,15 @@ pub mod android {
     pub extern "system" fn Java_com_uniswap_RnEthersRs_00024Companion_signTxWithWallet(env: JNIEnv, _class: JClass, wallet_ptr: jlong, tx_hash: JString, chain_id: jlong) -> jstring {
         // Convert the JString to a Rust String
         let tx_hash_str: String = env.get_string(tx_hash).expect("Couldn't get java string!").into();
-
-        // Convert the Rust String to bytes
-        let tx_hash_bytes = tx_hash_str.as_bytes();
+        let tx_hash_cstring = CString::new(tx_hash_str).expect("Failed to create CString");
+        let tx_hash_ptr = tx_hash_cstring.as_ptr();
 
         // Sign the transaction with the wallet
-        let signature_struct = sign_tx_with_wallet(wallet_ptr as *const LocalWallet,  tx_hash_bytes.as_ptr() as *const c_char, chain_id as u64);
-
+        let signature_struct = sign_tx_with_wallet(wallet_ptr as *mut LocalWallet, tx_hash_ptr, chain_id as u64);
         // Convert the signature to a Rust String
         let signature = unsafe { CStr::from_ptr(signature_struct.signature).to_string_lossy().into_owned() };
-
         // Convert the Rust String to a JString
         let output = env.new_string(signature).expect("Couldn't create java string!");
-
         // Return the JString
         output.into_inner()
     }
@@ -415,12 +450,11 @@ pub mod android {
     pub extern "system" fn Java_com_uniswap_RnEthersRs_00024Companion_signMessageWithWallet(env: JNIEnv, _class: JClass, wallet_ptr: jlong, message: JString) -> jstring {
         // Convert the JString to a Rust String
         let message_str: String = env.get_string(message).expect("Couldn't get java string!").into();
-
-        // Convert the Rust String to bytes
-        let message_str_bytes = message_str.as_bytes();
+        let message_cstring = CString::new(message_str).expect("Failed to create CString");
+        let message_ptr = message_cstring.as_ptr();
 
         // Sign the message with the wallet
-        let signature_ptr = sign_message_with_wallet(wallet_ptr as *const LocalWallet, message_str_bytes.as_ptr() as *const c_char);
+        let signature_ptr = sign_message_with_wallet(wallet_ptr as *const LocalWallet, message_ptr);
 
         // Convert the signature to a Rust String
         let signature = unsafe { CStr::from_ptr(signature_ptr).to_string_lossy().into_owned() };
@@ -438,12 +472,11 @@ pub mod android {
     pub extern "system" fn Java_com_uniswap_RnEthersRs_00024Companion_signHashWithWallet(env: JNIEnv, _class: JClass, wallet_ptr: jlong, hash: JString, chain_id: jlong) -> jstring {
         // Convert the JString to a Rust String
         let hash_str: String = env.get_string(hash).expect("Couldn't get java string!").into();
-
-        // Convert the Rust String to bytes
-        let hash_str_bytes = hash_str.as_bytes();
+        let hash_cstring = CString::new(hash_str.clone()).expect("Failed to create CString");
+        let hash_ptr = hash_cstring.as_ptr();
 
         // Sign the hash with the wallet
-        let signature_ptr = sign_hash_with_wallet(wallet_ptr as *const LocalWallet, hash_str_bytes.as_ptr() as *const c_char, chain_id as u64);
+        let signature_ptr = sign_hash_with_wallet(wallet_ptr as *const LocalWallet, hash_ptr, chain_id as u64);
 
         // Convert the signature to a Rust String
         let signature = unsafe { CStr::from_ptr(signature_ptr).to_string_lossy().into_owned() };
