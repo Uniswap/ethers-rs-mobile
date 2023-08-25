@@ -1,21 +1,15 @@
 package com.uniswap
 
- /**
- * This object is not used directly in this repo, but is included to show what the JNI bindings correspond with. 
+/**
+  * These functions are defined from an object to be used from a static context.
+  * The Rust implementation contains JNI bindings that are generated from the definition here.
  */
 object EthersRs {
     /**
      * Generates a mnemonic and its associated address.
      * @return A CMnemonicAndAddress object containing the generated mnemonic and its associated address.
      */
-    external fun generateMnemonic(): CMnemonicAndAddress
-
-
-    /**
-     * Frees the memory allocated for the mnemonic.
-     * @param mnemonic The mnemonic to be freed.
-     */
-    external fun mnemonicFree(mnemonic: CMnemonicAndAddress)
+    external fun generateMnemonic(): MnemonicAndAddress
 
     /**
      * Generates a private key from a given mnemonic.
@@ -23,13 +17,7 @@ object EthersRs {
      * @param index The index of the private key to generate.
      * @return A CPrivateKey object containing the generated private key.
      */
-    external fun privateKeyFromMnemonic(mnemonic: String?, index: Int): CPrivateKey
-
-    /**
-     * Frees the memory allocated for the private key.
-     * @param privateKey The private key to be freed.
-     */
-    external fun privateKeyFree(privateKey: CPrivateKey)
+    external fun privateKeyFromMnemonic(mnemonic: String?, index: Int): PrivateKeyAndAddress
 
     /**
      * Creates a wallet from a given private key.
@@ -80,34 +68,24 @@ object EthersRs {
       hash: String,
       chainId: Long
     ): String
-
-  /**
-   * Frees the memory allocated for the string.
-   * @param string The string to be freed.
-   */
-  external fun stringFree(string: String)
 }
 
 /**
  * Represents a private key and its associated address.
  * @property privateKey The private key.
  * @property address The address associated with the private key.
- * @property handle This is a pointer to a Rust CPrivateKey struct.
  */
-class CPrivateKey(
+class PrivateKeyAndAddress(
   var privateKey: String,
   var address: String,
-  var handle: Long
 )
 
 /**
  * Represents a mnemonic and its associated address.
  * @property mnemonic The mnemonic phrase.
  * @property address The address associated with the mnemonic.
- * @property handle This is a pointer to a Rust CMnemonicAndAddress struct.
  */
-class CMnemonicAndAddress(
+class MnemonicAndAddress(
   var mnemonic: String,
   var address: String,
-  var handle: Long
 )

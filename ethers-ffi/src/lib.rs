@@ -72,16 +72,20 @@ pub struct SignedTransaction {
 pub struct CSignedTransaction {
     signature: *const c_char,
 }
-
 #[no_mangle]
-pub extern "C" fn generate_mnemonic() -> CMnemonicAndAddress {
+fn generate_mnemonic_rust() -> MnemonicAndAddress {
     let rng = &mut rand::thread_rng();
     let mnemonic = Mnemonic::<English>::new_with_count(rng, 12).unwrap().to_phrase().unwrap();
     let mnem_clone = mnemonic.clone();
     let private_key = derive_private_key(mnemonic, 0);
 
     let mnemonic_struct = MnemonicAndAddress { mnemonic: mnem_clone, address: private_key.address };
+    return mnemonic_struct
+}
 
+#[no_mangle]
+pub extern "C" fn generate_mnemonic() -> CMnemonicAndAddress {
+    let mnemonic_struct = generate_mnemonic_rust();
     return CMnemonicAndAddress::c_repr_of(mnemonic_struct).unwrap()
 }
 
@@ -104,6 +108,12 @@ fn derive_private_key(mnemonic_str: String, index: u32) -> PrivateKey {
     let address = verifying_key_to_checksummed_address(verifying_key.key);
 
     return PrivateKey { private_key: private_key_str, address }
+}
+
+#[no_mangle]
+fn private_key_from_mnemonic_rust(mnemonic: String, index: u32) -> PrivateKey {
+    let priv_struct = derive_private_key(mnemonic, index);
+    return priv_struct
 }
 
 #[no_mangle]
@@ -255,6 +265,11 @@ pub mod android {
         env.new_string(rust_string).expect("Failed to create Java string")
     }
 
+    fn jstring_to_rust_string(env: &JNIEnv, jstring: JString) -> String {
+        let jstr = env.get_string(jstring).expect("Couldn't get java string!");
+        return jstr.to_str().expect("Invalid UTF-8 in java string").to_string();
+    }
+
     fn jstring_to_cstring(env: &JNIEnv, jstring: JString) -> CString {
         let jstr = env.get_string(jstring).expect("Couldn't get java string!");
         let cstring = CString::new(jstr.to_str().expect("Invalid UTF-8 in java string"))
@@ -264,40 +279,27 @@ pub mod android {
 
     #[no_mangle]
     pub extern "system" fn Java_com_uniswap_EthersRs_generateMnemonic(env: JNIEnv, _class: JClass) -> jobject{
-        let mnemonic_struct = generate_mnemonic();
+        let mnemonic_struct = generate_mnemonic_rust();
 
-        let class_name = "com/uniswap/CMnemonicAndAddress";
+        let class_name = "com/uniswap/MnemonicAndAddress";
         let class = env
             .find_class(class_name)
             .expect(&format!("Failed to find class: {}", class_name));
 
-        // Convert the mnemonic and address fields to Rust String
-        let mnemonic = unsafe { CStr::from_ptr(mnemonic_struct.mnemonic).to_string_lossy().into_owned() };
-        let address = unsafe { CStr::from_ptr(mnemonic_struct.address).to_string_lossy().into_owned() };
-
         // Create a new Java string from the Rust string
-        let mnemonic_jstring = rust_string_to_jstring(&env, mnemonic);
-        let address_jstring = rust_string_to_jstring(&env, address);
-
-        // Create a Box that owns the mnemonic_struct (box) is a smart pointer that allocates data on the heap).
-        // When this Box is dropped (goes out of scope), it will deallocate the mnemonic_struct as well.
-        let mnemonic_box = Box::new(mnemonic_struct);
-        let mnemonic_ptr = Box::into_raw(mnemonic_box);
-    
-        // Cast the raw pointer to a jlong, which is a pointer to a JLong object
-        let handle = mnemonic_ptr as jlong;
+        let mnemonic_jstring = rust_string_to_jstring(&env, mnemonic_struct.mnemonic.clone());
+        let address_jstring = rust_string_to_jstring(&env, mnemonic_struct.address.clone());
 
         let object = env
             .new_object(
                 class,
-                "(Ljava/lang/String;Ljava/lang/String;J)V",
+                "(Ljava/lang/String;Ljava/lang/String;)V",
                 &[
                     JValue::Object(JObject::from(mnemonic_jstring).into()), 
-                    JValue::Object(JObject::from(address_jstring).into()),
-                    JValue::Long(handle)
+                    JValue::Object(JObject::from(address_jstring).into())
                 ],
             )
-            .expect("Failed to create CMnemonicAndAddress object");
+            .expect("Failed to create MnemonicAndAddress object");
         
         //consume the JObject and return the underlying jobject, which is a raw pointer to the Java object.
         object.into_inner()
@@ -305,79 +307,31 @@ pub mod android {
 
     #[no_mangle]
     pub extern "system" fn Java_com_uniswap_EthersRs_privateKeyFromMnemonic(env: JNIEnv, _class: JClass, mnemonic: JString, index: jlong) -> jobject {
-        let mnemonic_cstring = jstring_to_cstring(&env, mnemonic);
-        let mnemonic_ptr = mnemonic_cstring.as_ptr() as *const c_char;
+        
+        let mnemonic_string = jstring_to_rust_string(&env, mnemonic);
+        let private_key_struct = private_key_from_mnemonic_rust(mnemonic_string, index as u32);
 
-        let private_key_struct = private_key_from_mnemonic(mnemonic_ptr, index as u32);
-
-        let class_name = "com/uniswap/CPrivateKey";
+        let class_name = "com/uniswap/PrivateKeyAndAddress";
         let class = env
             .find_class(class_name)
             .expect(&format!("Failed to find class: {}", class_name));
 
-        // Convert the mnemonic and address fields to Rust String
-        let private_key = unsafe { CStr::from_ptr(private_key_struct.private_key).to_string_lossy().into_owned() };
-        let address = unsafe { CStr::from_ptr(private_key_struct.address).to_string_lossy().into_owned() };
-
         // Create a new Java string from the Rust string
-        let private_key_jstring = rust_string_to_jstring(&env, private_key);
-        let address_jstring = rust_string_to_jstring(&env, address);
-
-        // Create a Box that owns the prv struct (box) is a smart pointer that allocates data on the heap).
-        // When this Box is dropped (goes out of scope), it will deallocate  prv as well.
-        let private_key_box = Box::new(private_key_struct);
-        let private_key_ptr = Box::into_raw(private_key_box);
-    
-        // Cast the raw pointer to a jlong, which is a pointer to a JLong object
-        let handle = private_key_ptr as jlong;
+        let private_key_jstring = rust_string_to_jstring(&env, private_key_struct.private_key.clone());
+        let address_jstring = rust_string_to_jstring(&env, private_key_struct.address.clone());
 
         // Create a new instance of CMnemonicAndAddress
         let object = env
             .new_object(
                 class,
-                "(Ljava/lang/String;Ljava/lang/String;J)V",
+                "(Ljava/lang/String;Ljava/lang/String;)V",
                 &[
                     JValue::Object(JObject::from(private_key_jstring).into()), 
                     JValue::Object(JObject::from(address_jstring).into()),
-                    JValue::Long(handle)
                 ],
             )
-            .expect("Failed to create CPrivateKey object");
+            .expect("Failed to create PrivateKey object");
         object.into_inner()
-    }
-
-    // Function to free the mnemonic
-    #[no_mangle]
-    pub extern "system" fn Java_com_uniswap_EthersRs_mnemonicFree(env: JNIEnv, _class: JClass, mnemonic: jobject) {
-        // Get the handle field (which is a pointer to the Rust object) from the Java object
-        let mnemonic_object = JObject::from(mnemonic);
-        let handle = env.get_field(mnemonic_object, "handle", "J").expect("Should be able to get field handle").j().expect("handle should be a long");
-
-        // Cast the handle to a pointer to the Rust object
-        let mnemonic_ptr = handle as *mut CMnemonicAndAddress;
-
-        // Take ownership of the Rust object and free it
-        let mnemonic_struct =  unsafe { opaque_pointer::own_back(mnemonic_ptr).unwrap() };
-        mnemonic_free(mnemonic_struct);
-    }
-
-    // Function to free the private key
-    #[no_mangle]
-    pub extern "system" fn Java_com_uniswap_EthersRs_privateKeyFree(env: JNIEnv, _class: JClass, private_key: jobject) {
-        // Convert the jobject to a JObject
-        let private_key_object = JObject::from(private_key);
-
-        // Get the handle field from the JObject. The handle is a jlong that we will cast to a pointer.
-        let handle = env.get_field(private_key_object, "handle", "J")
-            .expect("Should be able to get field handle")
-            .j().expect("handle should be a long");
-
-        // Cast the handle to a pointer to the Rust object
-        let private_key_ptr = handle as *mut CPrivateKey;
-
-        // Take ownership of the Rust object and free it
-        let private_key_struct =  unsafe { opaque_pointer::own_back(private_key_ptr).unwrap() };
-        private_key_free(private_key_struct);
     }
 
     // Function to get a wallet from a private key
@@ -388,7 +342,7 @@ pub mod android {
         let wallet_ptr_long: u64 = wallet_ptr as u64;
         wallet_ptr_long
     }
-
+    
     // Function to free the wallet
     #[no_mangle]
     pub extern "system" fn Java_com_uniswap_EthersRs_walletFree(_env: JNIEnv, _class: JClass, wallet_ptr: jlong) {
@@ -427,6 +381,9 @@ pub mod android {
         // Convert the Rust String to a JString
         let output = env.new_string(signature).expect("Couldn't create java string!");
 
+        // Free signature pointer in C 
+        string_free(signature_ptr);
+
         // Return the JString
         output.into_inner()
     }
@@ -448,18 +405,10 @@ pub mod android {
         // Convert the Rust String to a JString
         let output = env.new_string(signature).expect("Couldn't create java string!");
 
+        // Free signature pointer in C 
+        string_free(signature_ptr);
+
         // Return the JString
         output.into_inner()
-    }
-
-    // Function to free a string
-    #[no_mangle]
-    pub extern "system" fn Java_com_uniswap_EthersRs_stringFree(env: JNIEnv, _class: JClass, string: JString) {
-
-        let c_string_str = jstring_to_cstring(&env, string);
-        let c_string_ptr = c_string_str.into_raw(); // makes mutable raw pointer
-
-        // Free the string
-        string_free(c_string_ptr);
     }
 }
