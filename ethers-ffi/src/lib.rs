@@ -5,7 +5,7 @@ use coins_bip32::{
     enc::{MainnetEncoder, XKeyEncoder},
     path::DerivationPath,
 };
-use coins_bip39::{English, Mnemonic};
+use coins_bip39::{English, Mnemonic, Wordlist};
 use ethers_core::{
     types::{Address, H256},
     utils::{keccak256, to_checksum},
@@ -72,6 +72,24 @@ pub struct SignedTransaction {
 pub struct CSignedTransaction {
     signature: *const c_char,
 }
+
+pub extern "C" fn validate_mnemonic(mnemonic: *const c_char) -> bool {
+    let mnemonic_c_str = unsafe {
+        assert!(!mnemonic.is_null());
+        CStr::from_ptr(mnemonic)
+    };
+    let mnemonic_str = mnemonic_c_str.to_str().unwrap();
+    let words = mnemonic_str.split(" ");
+    
+    for word in words {
+        match <English as Wordlist>::get_index(word) {
+            Ok(_res) => (),
+            Err(_err) => return false,
+        }
+    }
+    true
+}
+
 #[no_mangle]
 fn generate_mnemonic_rust() -> MnemonicAndAddress {
     let rng = &mut rand::thread_rng();
@@ -228,7 +246,7 @@ pub extern "C" fn string_free(string: *mut c_char) {
         if string.is_null() {
             return
         }
-        CString::from_raw(string)
+        drop(CString::from_raw(string));
     };
 }
 
@@ -259,7 +277,9 @@ pub mod android {
     use super::*;
     use self::jni::JNIEnv;
     use self::jni::objects::{JClass, JString, JValue, JObject};
-    use self::jni::sys::{jlong, jobject, jstring};
+    use self::jni::sys::{jlong, jobject, jstring, jboolean};
+
+    use coins_bip39::Wordlist;
 
     fn rust_string_to_jstring<'a>(env: &'a JNIEnv, rust_string: String) -> JString<'a> {
         env.new_string(rust_string).expect("Failed to create Java string")
@@ -275,6 +295,20 @@ pub mod android {
         let cstring = CString::new(jstr.to_str().expect("Invalid UTF-8 in java string"))
             .expect("Failed to create CString");
         cstring
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_com_uniswap_EthersRs_validateMnemonic(env: JNIEnv, _class: JClass, mnemonic: JString) -> jboolean{
+        let mnemonic_string = jstring_to_rust_string(&env, mnemonic);
+        let words = mnemonic_string.split(" ");
+        
+        for word in words {
+            match <English as Wordlist>::get_index(word) {
+                Ok(_res) => (),
+                Err(_err) => return false as u8,
+            }
+        }
+        true as u8
     }
 
     #[no_mangle]
