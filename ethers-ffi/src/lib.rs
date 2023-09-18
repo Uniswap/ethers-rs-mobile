@@ -277,6 +277,12 @@ pub mod android {
         cstring
     }
 
+    fn cstring_to_jstring<'a>(env: &'a JNIEnv,cstring_ptr: *const c_char) -> JString<'a> {
+        let rust_string = unsafe { CStr::from_ptr(cstring_ptr).to_string_lossy().into_owned() };
+        let output = env.new_string(rust_string).expect("Couldn't create java string!");
+        return output
+    }
+
     #[no_mangle]
     pub extern "system" fn Java_com_uniswap_EthersRs_generateMnemonic(env: JNIEnv, _class: JClass) -> jobject{
         let mnemonic_struct = generate_mnemonic_rust();
@@ -307,7 +313,7 @@ pub mod android {
 
     #[no_mangle]
     pub extern "system" fn Java_com_uniswap_EthersRs_privateKeyFromMnemonic(env: JNIEnv, _class: JClass, mnemonic: JString, index: jlong) -> jobject {
-        
+
         let mnemonic_string = jstring_to_rust_string(&env, mnemonic);
         let private_key_struct = private_key_from_mnemonic_rust(mnemonic_string, index as u32);
 
@@ -317,8 +323,9 @@ pub mod android {
             .expect(&format!("Failed to find class: {}", class_name));
 
         // Create a new Java string from the Rust string
-        let private_key_jstring = rust_string_to_jstring(&env, private_key_struct.private_key.clone());
-        let address_jstring = rust_string_to_jstring(&env, private_key_struct.address.clone());
+        let private_key_jstring = rust_string_to_jstring(&env, private_key_struct.private_key);
+        let address_jstring = rust_string_to_jstring(&env, private_key_struct.address);
+
 
         // Create a new instance of CMnemonicAndAddress
         let object = env
@@ -338,7 +345,8 @@ pub mod android {
     #[no_mangle]
     pub extern "system" fn Java_com_uniswap_EthersRs_walletFromPrivateKey(env: JNIEnv, _class: JClass, private_key: JString)  -> u64 {
         let private_key_cstring = jstring_to_cstring(&env, private_key);
-        let wallet_ptr = wallet_from_private_key(private_key_cstring.as_ptr() as *const c_char);
+        let private_key_ptr = private_key_cstring.as_ptr() as *const c_char;
+        let wallet_ptr = wallet_from_private_key(private_key_ptr);
         let wallet_ptr_long: u64 = wallet_ptr as u64;
         wallet_ptr_long
     }
@@ -358,12 +366,8 @@ pub mod android {
 
         // Sign the transaction with the wallet
         let signature_struct = sign_tx_with_wallet(wallet_ptr as *mut LocalWallet, tx_hash_ptr, chain_id as u64);
-        // Convert the signature to a Rust String
-        let signature = unsafe { CStr::from_ptr(signature_struct.signature).to_string_lossy().into_owned() };
-        // Convert the Rust String to a JString
-        let output = env.new_string(signature).expect("Couldn't create java string!");
-        // Return the JString
-        output.into_inner()
+        let signature_jstring = cstring_to_jstring(&env, signature_struct.signature);
+        signature_jstring.into_inner()
     }
 
     // Function to sign a message with a wallet
@@ -374,18 +378,13 @@ pub mod android {
 
         // Sign the message with the wallet
         let signature_ptr = sign_message_with_wallet(wallet_ptr as *const LocalWallet, message_ptr);
-
-        // Convert the signature to a Rust String
-        let signature = unsafe { CStr::from_ptr(signature_ptr).to_string_lossy().into_owned() };
-
-        // Convert the Rust String to a JString
-        let output = env.new_string(signature).expect("Couldn't create java string!");
+        let signature_jstring = cstring_to_jstring(&env, signature_ptr);
 
         // Free signature pointer in C 
         string_free(signature_ptr);
 
         // Return the JString
-        output.into_inner()
+        signature_jstring.into_inner()
     }
 
 
@@ -399,16 +398,12 @@ pub mod android {
         // Sign the hash with the wallet
         let signature_ptr = sign_hash_with_wallet(wallet_ptr as *const LocalWallet, hash_ptr, chain_id as u64);
 
-        // Convert the signature to a Rust String
-        let signature = unsafe { CStr::from_ptr(signature_ptr).to_string_lossy().into_owned() };
-
-        // Convert the Rust String to a JString
-        let output = env.new_string(signature).expect("Couldn't create java string!");
+        let signature_jstring = cstring_to_jstring(&env, signature_ptr);
 
         // Free signature pointer in C 
         string_free(signature_ptr);
 
         // Return the JString
-        output.into_inner()
+        signature_jstring.into_inner()
     }
 }
