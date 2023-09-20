@@ -72,16 +72,20 @@ pub struct SignedTransaction {
 pub struct CSignedTransaction {
     signature: *const c_char,
 }
-
 #[no_mangle]
-pub extern "C" fn generate_mnemonic() -> CMnemonicAndAddress {
+fn generate_mnemonic_rust() -> MnemonicAndAddress {
     let rng = &mut rand::thread_rng();
     let mnemonic = Mnemonic::<English>::new_with_count(rng, 12).unwrap().to_phrase().unwrap();
     let mnem_clone = mnemonic.clone();
     let private_key = derive_private_key(mnemonic, 0);
 
     let mnemonic_struct = MnemonicAndAddress { mnemonic: mnem_clone, address: private_key.address };
+    return mnemonic_struct
+}
 
+#[no_mangle]
+pub extern "C" fn generate_mnemonic() -> CMnemonicAndAddress {
+    let mnemonic_struct = generate_mnemonic_rust();
     return CMnemonicAndAddress::c_repr_of(mnemonic_struct).unwrap()
 }
 
@@ -104,6 +108,12 @@ fn derive_private_key(mnemonic_str: String, index: u32) -> PrivateKey {
     let address = verifying_key_to_checksummed_address(verifying_key.key);
 
     return PrivateKey { private_key: private_key_str, address }
+}
+
+#[no_mangle]
+fn private_key_from_mnemonic_rust(mnemonic: String, index: u32) -> PrivateKey {
+    let priv_struct = derive_private_key(mnemonic, index);
+    return priv_struct
 }
 
 #[no_mangle]
@@ -220,4 +230,180 @@ pub extern "C" fn string_free(string: *mut c_char) {
         }
         CString::from_raw(string)
     };
+}
+
+/*
+ * The following block of code is used for Android platform specific functionality.
+ * It uses the Java Native Interface (JNI) to interact with Java code from Rust.
+ *
+ * The functions defined in this block are used to:
+ * - Generate mnemonics
+ * - Derive private keys from mnemonics
+ * - Create wallets from private keys
+ * - Sign transactions and messages with wallets
+ * - Free up memory
+ *
+ * The functions are declared with the #[no_mangle] attribute to keep their names intact after compilation,
+ * and they are declared as extern "system" to use the system's default C calling convention.
+ *
+ * The functions can be called from Java code using the Java_com_uniswap_RnEthersRs_00024Companion prefix,
+ * where:
+ * - 'Java_' is a prefix added by the JNI
+ * - 'com_uniswap_EthersRs' is the package and class name in the Java code
+ */
+#[cfg(target_os="android")]
+#[allow(non_snake_case)]
+pub mod android {
+    extern crate jni;
+
+    use super::*;
+    use self::jni::JNIEnv;
+    use self::jni::objects::{JClass, JString, JValue, JObject};
+    use self::jni::sys::{jlong, jobject, jstring};
+
+    fn rust_string_to_jstring<'a>(env: &'a JNIEnv, rust_string: String) -> JString<'a> {
+        env.new_string(rust_string).expect("Failed to create Java string")
+    }
+
+    fn jstring_to_rust_string(env: &JNIEnv, jstring: JString) -> String {
+        let jstr = env.get_string(jstring).expect("Couldn't get java string!");
+        return jstr.to_str().expect("Invalid UTF-8 in java string").to_string();
+    }
+
+    fn jstring_to_cstring(env: &JNIEnv, jstring: JString) -> CString {
+        let jstr = env.get_string(jstring).expect("Couldn't get java string!");
+        let cstring = CString::new(jstr.to_str().expect("Invalid UTF-8 in java string"))
+            .expect("Failed to create CString");
+        cstring
+    }
+
+    fn cstring_to_jstring<'a>(env: &'a JNIEnv,cstring_ptr: *const c_char) -> JString<'a> {
+        let rust_string = unsafe { CStr::from_ptr(cstring_ptr).to_string_lossy().into_owned() };
+        let output = env.new_string(rust_string).expect("Couldn't create java string!");
+        return output
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_com_uniswap_EthersRs_generateMnemonic(env: JNIEnv, _class: JClass) -> jobject{
+        let mnemonic_struct = generate_mnemonic_rust();
+
+        let class_name = "com/uniswap/MnemonicAndAddress";
+        let class = env
+            .find_class(class_name)
+            .expect(&format!("Failed to find class: {}", class_name));
+
+        // Create a new Java string from the Rust string
+        let mnemonic_jstring = rust_string_to_jstring(&env, mnemonic_struct.mnemonic);
+        let address_jstring = rust_string_to_jstring(&env, mnemonic_struct.address);
+
+        let object = env
+            .new_object(
+                class,
+                "(Ljava/lang/String;Ljava/lang/String;)V",
+                &[
+                    JValue::Object(JObject::from(mnemonic_jstring).into()), 
+                    JValue::Object(JObject::from(address_jstring).into())
+                ],
+            )
+            .expect("Failed to create MnemonicAndAddress object");
+        
+        //consume the JObject and return the underlying jobject, which is a raw pointer to the Java object.
+        object.into_inner()
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_com_uniswap_EthersRs_privateKeyFromMnemonic(env: JNIEnv, _class: JClass, mnemonic: JString, index: jlong) -> jobject {
+
+        let mnemonic_string = jstring_to_rust_string(&env, mnemonic);
+        let private_key_struct = private_key_from_mnemonic_rust(mnemonic_string, index as u32);
+
+        let class_name = "com/uniswap/PrivateKeyAndAddress";
+        let class = env
+            .find_class(class_name)
+            .expect(&format!("Failed to find class: {}", class_name));
+
+        // Create a new Java string from the Rust string
+        let private_key_jstring = rust_string_to_jstring(&env, private_key_struct.private_key);
+        let address_jstring = rust_string_to_jstring(&env, private_key_struct.address);
+
+
+        // Create a new instance of CMnemonicAndAddress
+        let object = env
+            .new_object(
+                class,
+                "(Ljava/lang/String;Ljava/lang/String;)V",
+                &[
+                    JValue::Object(JObject::from(private_key_jstring).into()), 
+                    JValue::Object(JObject::from(address_jstring).into()),
+                ],
+            )
+            .expect("Failed to create PrivateKey object");
+        object.into_inner()
+    }
+
+    // Function to get a wallet from a private key
+    #[no_mangle]
+    pub extern "system" fn Java_com_uniswap_EthersRs_walletFromPrivateKey(env: JNIEnv, _class: JClass, private_key: JString)  -> u64 {
+        let private_key_cstring = jstring_to_cstring(&env, private_key);
+        let private_key_ptr = private_key_cstring.as_ptr() as *const c_char;
+        let wallet_ptr = wallet_from_private_key(private_key_ptr);
+        let wallet_ptr_long: u64 = wallet_ptr as u64;
+        wallet_ptr_long
+    }
+    
+    // Function to free the wallet
+    #[no_mangle]
+    pub extern "system" fn Java_com_uniswap_EthersRs_walletFree(_env: JNIEnv, _class: JClass, wallet_ptr: jlong) {
+        // Free the wallet
+        wallet_free(wallet_ptr as *mut LocalWallet);
+    }
+    
+    // Function to sign a transaction with a wallet
+    #[no_mangle]
+    pub extern "system" fn Java_com_uniswap_EthersRs_signTxWithWallet(env: JNIEnv, _class: JClass, wallet_ptr: jlong, tx_hash: JString, chain_id: jlong) -> jstring {
+        let tx_hash_cstring = jstring_to_cstring(&env, tx_hash);
+        let tx_hash_ptr = tx_hash_cstring.as_ptr();
+
+        // Sign the transaction with the wallet
+        let signature_struct = sign_tx_with_wallet(wallet_ptr as *mut LocalWallet, tx_hash_ptr, chain_id as u64);
+        let signature_jstring = cstring_to_jstring(&env, signature_struct.signature);
+        signature_jstring.into_inner()
+    }
+
+    // Function to sign a message with a wallet
+    #[no_mangle]
+    pub extern "system" fn Java_com_uniswap_EthersRs_signMessageWithWallet(env: JNIEnv, _class: JClass, wallet_ptr: jlong, message: JString) -> jstring {
+        let message_cstring = jstring_to_cstring(&env, message);
+        let message_ptr = message_cstring.as_ptr();
+
+        // Sign the message with the wallet
+        let signature_ptr = sign_message_with_wallet(wallet_ptr as *const LocalWallet, message_ptr);
+        let signature_jstring = cstring_to_jstring(&env, signature_ptr);
+
+        // Free signature pointer in C 
+        string_free(signature_ptr);
+
+        // Return the JString
+        signature_jstring.into_inner()
+    }
+
+
+    // Function to sign a hash with a wallet
+    #[no_mangle]
+    pub extern "system" fn Java_com_uniswap_EthersRs_signHashWithWallet(env: JNIEnv, _class: JClass, wallet_ptr: jlong, hash: JString, chain_id: jlong) -> jstring {
+
+        let hash_cstring = jstring_to_cstring(&env, hash);
+        let hash_ptr = hash_cstring.as_ptr();
+
+        // Sign the hash with the wallet
+        let signature_ptr = sign_hash_with_wallet(wallet_ptr as *const LocalWallet, hash_ptr, chain_id as u64);
+
+        let signature_jstring = cstring_to_jstring(&env, signature_ptr);
+
+        // Free signature pointer in C 
+        string_free(signature_ptr);
+
+        // Return the JString
+        signature_jstring.into_inner()
+    }
 }

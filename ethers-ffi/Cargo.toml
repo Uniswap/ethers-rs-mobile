@@ -13,6 +13,9 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[target.'cfg(target_os="android")'.dependencies]
+jni = { version = "0.5", default-features = false }
+
 [lib]
 crate-type = ["staticlib", "cdylib"] # iOS uses staticlib, Android uses cdylib
 name = "ethers_ffi"
