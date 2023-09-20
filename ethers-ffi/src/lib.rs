@@ -293,8 +293,8 @@ pub mod android {
             .expect(&format!("Failed to find class: {}", class_name));
 
         // Create a new Java string from the Rust string
-        let mnemonic_jstring = rust_string_to_jstring(&env, mnemonic_struct.mnemonic.clone());
-        let address_jstring = rust_string_to_jstring(&env, mnemonic_struct.address.clone());
+        let mnemonic_jstring = rust_string_to_jstring(&env, mnemonic_struct.mnemonic);
+        let address_jstring = rust_string_to_jstring(&env, mnemonic_struct.address);
 
         let object = env
             .new_object(
