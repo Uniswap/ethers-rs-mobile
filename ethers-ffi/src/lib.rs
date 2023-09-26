@@ -84,7 +84,7 @@ fn generate_mnemonic_rust() -> MnemonicAndAddress {
 }
 
 #[no_mangle]
-pub extern "C" fn validate_wordlist(mnemonic: *const c_char) -> *mut c_char {
+pub extern "C" fn find_invalid_word(mnemonic: *const c_char) -> *mut c_char {
     let mnemonic_c_str = unsafe {
         assert!(!mnemonic.is_null());
         CStr::from_ptr(mnemonic)
@@ -93,11 +93,13 @@ pub extern "C" fn validate_wordlist(mnemonic: *const c_char) -> *mut c_char {
     let words = mnemonic_str.split(" ");
 
     for word in words {
-        match <English as Wordlist>::get_index(word) {
-            Ok(_res) => (),
-            Err(_err) => {
-                let word_c_string = CString::new(word).unwrap();
-                return word_c_string.into_raw()
+        if word != "" {
+            match <English as Wordlist>::get_index(word) {
+                Ok(_res) => (),
+                Err(_err) => {
+                    let word_c_string = CString::new(word).unwrap();
+                    return word_c_string.into_raw()
+                }
             }
         }
     }
@@ -321,17 +323,19 @@ pub mod android {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_uniswap_EthersRs_validateWordlist(env: JNIEnv, _class: JClass, mnemonic: JString) -> jstring{
+    pub extern "system" fn Java_com_uniswap_EthersRs_findInvalidWord(env: JNIEnv, _class: JClass, mnemonic: JString) -> jstring{
         let mnemonic_string = jstring_to_rust_string(&env, mnemonic);
         let words = mnemonic_string.split(" ");
 
         for word in words {
-            match <English as Wordlist>::get_index(word) {
-                Ok(_res) => (),
-                Err(_err) => {
-                    let word_string = word.to_string();
-                    let word_jstring = rust_string_to_jstring(&env, word_string);
-                    return word_jstring.into_inner();
+            if word != "" {
+                match <English as Wordlist>::get_index(word) {
+                    Ok(_res) => (),
+                    Err(_err) => {
+                        let word_string = word.to_string();
+                        let word_jstring = rust_string_to_jstring(&env, word_string);
+                        return word_jstring.into_inner();
+                    }
                 }
             }
         }

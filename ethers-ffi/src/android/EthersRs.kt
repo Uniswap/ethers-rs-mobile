@@ -7,11 +7,11 @@ package com.uniswap
 object EthersRs {
 
     /**
-    * Validates a mnemonic string to check that each word exists in the BIP 39 wordlist.
+    * Iterates through words ofa mnemonic string to check that each word exists in the BIP 39 wordlist.
     * @param mnemonic - the mnemonic string
-    * @return The first invalid word. If there are none, an invalid string.
+    * @return The first invalid word. If there are none, an empty string.
     */
-    external fun validateWordlist(mnemonic: String): String
+    external fun findInvalidWord(mnemonic: String): String
 
     /**
     * General validation for a mnemonic string, including entropy.
