@@ -5,6 +5,21 @@ package com.uniswap
   * The Rust implementation contains JNI bindings that are generated from the definition here.
  */
 object EthersRs {
+
+    /**
+    * Validates a mnemonic string to check that each word exists in the BIP 39 wordlist.
+    * @param mnemonic - the mnemonic string
+    * @return The first invalid word. If there are none, an invalid string.
+    */
+    external fun validateWordlist(mnemonic: String): String
+
+    /**
+    * General validation for a mnemonic string, including entropy.
+    * @param mnemonic - the mnemonic string
+    * @return True if valid and false if not.
+    */
+    external fun validateMnemonic(mnemonic: String): Boolean
+    
     /**
      * Generates a mnemonic and its associated address.
      * @return A CMnemonicAndAddress object containing the generated mnemonic and its associated address.
