@@ -5,7 +5,7 @@ use coins_bip32::{
     enc::{MainnetEncoder, XKeyEncoder},
     path::DerivationPath,
 };
-use coins_bip39::{English, Mnemonic};
+use coins_bip39::{English, Mnemonic, Wordlist};
 use ethers_core::{
     types::{Address, H256},
     utils::{keccak256, to_checksum},
@@ -81,6 +81,45 @@ fn generate_mnemonic_rust() -> MnemonicAndAddress {
 
     let mnemonic_struct = MnemonicAndAddress { mnemonic: mnem_clone, address: private_key.address };
     return mnemonic_struct
+}
+
+#[no_mangle]
+pub extern "C" fn find_invalid_word(mnemonic: *const c_char) -> *mut c_char {
+    let mnemonic_c_str = unsafe {
+        assert!(!mnemonic.is_null());
+        CStr::from_ptr(mnemonic)
+    };
+    let mnemonic_str = mnemonic_c_str.to_str().unwrap();
+    let words = mnemonic_str.split(" ");
+
+    for word in words {
+        if word != "" {
+            match <English as Wordlist>::get_index(word) {
+                Ok(_res) => (),
+                Err(_err) => {
+                    let word_c_string = CString::new(word).unwrap();
+                    return word_c_string.into_raw()
+                }
+            }
+        }
+    }
+    let blank_c_string = CString::new("").unwrap();
+    return blank_c_string.into_raw()
+}
+
+#[no_mangle]
+pub extern "C" fn validate_mnemonic(mnemonic: *const c_char) -> bool {
+    let mnemonic_c_str = unsafe {
+        assert!(!mnemonic.is_null());
+        CStr::from_ptr(mnemonic)
+    };
+    let mnemonic_str = mnemonic_c_str.to_str().unwrap();
+    let valid = match Mnemonic::<English>::new_from_phrase(mnemonic_str) {
+        Ok(_res) => true,
+        Err(_err) => false,
+    };
+
+    return valid
 }
 
 #[no_mangle]
@@ -259,7 +298,7 @@ pub mod android {
     use super::*;
     use self::jni::JNIEnv;
     use self::jni::objects::{JClass, JString, JValue, JObject};
-    use self::jni::sys::{jlong, jobject, jstring};
+    use self::jni::sys::{jlong, jobject, jstring, jboolean};
 
     fn rust_string_to_jstring<'a>(env: &'a JNIEnv, rust_string: String) -> JString<'a> {
         env.new_string(rust_string).expect("Failed to create Java string")
@@ -281,6 +320,37 @@ pub mod android {
         let rust_string = unsafe { CStr::from_ptr(cstring_ptr).to_string_lossy().into_owned() };
         let output = env.new_string(rust_string).expect("Couldn't create java string!");
         return output
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_com_uniswap_EthersRs_findInvalidWord(env: JNIEnv, _class: JClass, mnemonic: JString) -> jstring{
+        let mnemonic_string = jstring_to_rust_string(&env, mnemonic);
+        let words = mnemonic_string.split(" ");
+
+        for word in words {
+            if word != "" {
+                match <English as Wordlist>::get_index(word) {
+                    Ok(_res) => (),
+                    Err(_err) => {
+                        let word_string = word.to_string();
+                        let word_jstring = rust_string_to_jstring(&env, word_string);
+                        return word_jstring.into_inner();
+                    }
+                }
+            }
+        }
+        env.new_string("").unwrap().into_inner()
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_com_uniswap_EthersRs_validateMnemonic(env: JNIEnv, _class: JClass, mnemonic: JString) -> jboolean{
+        let mnemonic_string = jstring_to_rust_string(&env, mnemonic);
+        let mnemonic_str = mnemonic_string.as_str();
+        let valid = match Mnemonic::<English>::new_from_phrase(mnemonic_str) {
+            Ok(_res) => true as u8,
+            Err(_err) => false as u8,
+        };
+        return valid
     }
 
     #[no_mangle]
@@ -325,7 +395,6 @@ pub mod android {
         // Create a new Java string from the Rust string
         let private_key_jstring = rust_string_to_jstring(&env, private_key_struct.private_key);
         let address_jstring = rust_string_to_jstring(&env, private_key_struct.address);
-
 
         // Create a new instance of CMnemonicAndAddress
         let object = env
