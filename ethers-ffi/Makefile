@@ -3,12 +3,17 @@
 NAME = libethers_ffi
 LIB = $(NAME).a
 SO = $(NAME).so
-ARCHS_IOS = x86_64-apple-ios aarch64-apple-ios aarch64-apple-ios-sim
 ARCHS_ANDROID = aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 NDK_STANDALONE = ~/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64
 ANDROID_DEST = ./ethers-rs-mobile/android/jniLibs
 IOS_DEST = ./ethers-rs-mobile/ios
 CARGO_PARAMS = --no-default-features 
+
+ARCHS_IOS = aarch64-apple-ios
+ARCHS_IOS_SIM = x86_64-apple-ios aarch64-apple-ios-sim
+IOS_LIB = $(NAME).xcframework
+XCFRAMEWORK = $(NAME)-iOS.xcframework
+IOS_PLATFORMS = iphoneos iphonesimulator
 
 TARGET_DIR = ../target
 
@@ -19,10 +24,7 @@ android-setup:
 
 android-build: $(ARCHS_ANDROID)
 
-ios-setup: 
-	rustup target add $(ARCHS_IOS)
-
-ios: ios-setup $(LIB)
+ios: $(IOS_LIB)
 
 clean:
 	rm -rf $(IOS_DEST)
@@ -40,7 +42,6 @@ android: android-setup android-build
 	cp $(TARGET_DIR)/i686-linux-android/release/$(SO) ${ANDROID_DEST}/x86/$(SO)
 	cp $(TARGET_DIR)/x86_64-linux-android/release/$(SO) ${ANDROID_DEST}/x86_64/$(SO)
 	cp $(TARGET_DIR)/aarch64-linux-android/release/$(SO) ${ANDROID_DEST}/arm64-v8a/$(SO)
-
 	cp $(TARGET_DIR)/armv7-linux-androideabi/release/$(SO) ${ANDROID_DEST}/armeabi-v7a/$(SO)
 
 aarch64-linux-android:
@@ -67,11 +68,19 @@ x86_64-linux-android:
 	CXX=$@-clang++ \
 	cargo build $(CARGO_PARAMS) --target $@ --release --lib
 
-.PHONY: $(ARCHS_IOS)
-$(ARCHS_IOS): %:
+iphoneos: $(ARCHS_IOS)
+	mkdir -p $(TARGET_DIR)/$@
+	lipo -create -output $(TARGET_DIR)/$@/$(LIB) $(foreach arch,$(ARCHS_IOS),$(wildcard $(TARGET_DIR)/$(arch)/release/$(LIB)))
+
+iphonesimulator: $(ARCHS_IOS_SIM)
+	mkdir -p $(TARGET_DIR)/$@
+	lipo -create -output $(TARGET_DIR)/$@/$(LIB) $(foreach arch,$(ARCHS_IOS_SIM),$(wildcard $(TARGET_DIR)/$(arch)/release/$(LIB)))
+
+.PHONY: $(ARCHS_IOS) $(ARCHS_IOS_SIM)
+$(ARCHS_IOS) $(ARCHS_IOS_SIM): %:
 	cargo build $(CARGO_PARAMS) --target $@ --release --lib
 
-$(LIB): $(ARCHS_IOS)
+$(IOS_LIB): $(IOS_PLATFORMS)
 	mkdir -p $(IOS_DEST)
-	lipo -create -output $(IOS_DEST)/$@ $(foreach arch,$(ARCHS_IOS),$(wildcard $(TARGET_DIR)/$(arch)/release/$(LIB)))
-	cbindgen --config cbindgen.toml --crate ethers-ffi --output $(IOS_DEST)/libethers_ffi.h 
+	cbindgen --config cbindgen.toml --crate ethers-ffi --output $(TARGET_DIR)/$(NAME).h
+	xcodebuild -create-xcframework -library $(TARGET_DIR)/iphoneos/$(LIB) -headers $(TARGET_DIR)/$(NAME).h -library $(TARGET_DIR)/iphonesimulator/$(LIB) -headers $(TARGET_DIR)/$(NAME).h -output $(IOS_DEST)/$@ 

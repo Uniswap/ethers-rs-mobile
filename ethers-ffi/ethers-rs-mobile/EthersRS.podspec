@@ -15,10 +15,10 @@ Pod::Spec.new do |s|
   s.platforms    = { :ios => "9.0", :tvos => "11.0" }
   s.source       = { :git => "https://github.com/uniswap/ethers-rs-mobile.git", :tag => "#{s.version}" }
 
-  s.source_files = "ios/*.h"
-  s.public_header_files = "ios/*.h"
-  s.preserve_paths = "ios/*.h"
-  s.vendored_libraries = "ios/libethers_ffi.a"
+  s.public_header_files = "libethers_ffi.xcframework/ios-arm64/Headers"
+  s.source_files = 'libethers_ffi.xcframework/ios-arm64/Headers'
+  s.preserve_paths =  'ios/libethers_ffi.xcframework/*'
+  s.vendored_frameworks = "ios/libethers_ffi.xcframework"
   s.xcconfig = { 'HEADER_SEARCH_PATHS' => "${PODS_ROOT}/#{s.name}/ios/**" }
 
 end
