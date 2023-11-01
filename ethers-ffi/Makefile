@@ -3,7 +3,7 @@
 NAME = libethers_ffi
 LIB = $(NAME).a
 SO = $(NAME).so
-ARCHS_IOS = x86_64-apple-ios aarch64-apple-ios
+ARCHS_IOS = x86_64-apple-ios aarch64-apple-ios aarch64-apple-ios-sim
 ARCHS_ANDROID = aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 NDK_STANDALONE = ~/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64
 ANDROID_DEST = ./ethers-rs-mobile/android/jniLibs
