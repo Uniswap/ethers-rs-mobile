@@ -11,8 +11,7 @@ CARGO_PARAMS = --no-default-features
 
 ARCHS_IOS = aarch64-apple-ios
 ARCHS_IOS_SIM = x86_64-apple-ios aarch64-apple-ios-sim
-IOS_LIB = $(NAME).xcframework
-XCFRAMEWORK = $(NAME)-iOS.xcframework
+IOS_LIB = EthersRS.xcframework
 IOS_PLATFORMS = iphoneos iphonesimulator
 
 TARGET_DIR = ../target
@@ -24,7 +23,10 @@ android-setup:
 
 android-build: $(ARCHS_ANDROID)
 
-ios: $(IOS_LIB)
+ios-setup: 
+	rustup target add $(ARCHS_IOS) $(ARCHS_IOS_SIM)
+
+ios: ios-setup $(IOS_LIB)
 
 clean:
 	rm -rf $(IOS_DEST)
@@ -82,5 +84,5 @@ $(ARCHS_IOS) $(ARCHS_IOS_SIM): %:
 
 $(IOS_LIB): $(IOS_PLATFORMS)
 	mkdir -p $(IOS_DEST)
-	cbindgen --config cbindgen.toml --crate ethers-ffi --output $(TARGET_DIR)/$(NAME).h
-	xcodebuild -create-xcframework -library $(TARGET_DIR)/iphoneos/$(LIB) -headers $(TARGET_DIR)/$(NAME).h -library $(TARGET_DIR)/iphonesimulator/$(LIB) -headers $(TARGET_DIR)/$(NAME).h -output $(IOS_DEST)/$@ 
+	cbindgen --config cbindgen.toml --crate ethers-ffi --output $(TARGET_DIR)/headers/$(NAME).h
+	xcodebuild -create-xcframework -library $(TARGET_DIR)/iphoneos/$(LIB) -headers $(TARGET_DIR)/headers -library $(TARGET_DIR)/iphonesimulator/$(LIB) -headers $(TARGET_DIR)/headers -output $(IOS_DEST)/$@ 
