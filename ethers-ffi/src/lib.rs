@@ -298,7 +298,7 @@ pub mod android {
     use super::*;
     use self::jni::JNIEnv;
     use self::jni::objects::{JClass, JString, JValue, JObject};
-    use self::jni::sys::{jlong, jobject, jstring, jboolean};
+    use self::jni::sys::{jlong, jobject, jstring, jboolean, jint};
 
     fn rust_string_to_jstring<'a>(env: &'a JNIEnv, rust_string: String) -> JString<'a> {
         env.new_string(rust_string).expect("Failed to create Java string")
@@ -382,7 +382,12 @@ pub mod android {
     }
 
     #[no_mangle]
-    pub extern "system" fn Java_com_uniswap_EthersRs_privateKeyFromMnemonic(env: JNIEnv, _class: JClass, mnemonic: JString, index: jlong) -> jobject {
+    pub extern "system" fn Java_com_uniswap_EthersRs_privateKeyFromMnemonic(env: JNIEnv, _class: JClass, mnemonic: JString, index: jint) -> jobject {
+
+        // jint is i32 so check before casting to u32
+        if (index < 0) {
+            panic!("Derivation index must be greater than or equal to 0");
+        }
 
         let mnemonic_string = jstring_to_rust_string(&env, mnemonic);
         let private_key_struct = private_key_from_mnemonic_rust(mnemonic_string, index as u32);
