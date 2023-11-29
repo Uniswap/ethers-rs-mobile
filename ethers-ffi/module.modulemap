@@ -1,0 +1,4 @@
+module EthersRS {
+    umbrella header "Headers/libethers_ffi.h"
+    export *
+}

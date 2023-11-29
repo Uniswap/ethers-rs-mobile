@@ -15,10 +15,8 @@ Pod::Spec.new do |s|
   s.platforms    = { :ios => "9.0", :tvos => "11.0" }
   s.source       = { :git => "https://github.com/uniswap/ethers-rs-mobile.git", :tag => "#{s.version}" }
 
-  s.source_files = "ios/*.h"
-  s.public_header_files = "ios/*.h"
-  s.preserve_paths = "ios/*.h"
-  s.vendored_libraries = "ios/libethers_ffi.a"
+  s.public_header_files = "ios/EthersRS.xcframework/Headers/*.h"
+  s.preserve_paths = "ios/EthersRS.xcframework/Headers/*.h"
+  s.vendored_frameworks = "ios/EthersRS.xcframework"
   s.xcconfig = { 'HEADER_SEARCH_PATHS' => "${PODS_ROOT}/#{s.name}/ios/**" }
-
 end
