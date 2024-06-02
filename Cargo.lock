@@ -1548,7 +1548,7 @@ dependencies = [
  "rusoto_kms",
  "semver 1.0.10",
  "serde_json",
- "sha2 0.9.9",
+ "sha2 0.10.1",
  "spki 0.6.0",
  "tempfile",
  "thiserror",
@@ -1586,7 +1586,7 @@ dependencies = [
  "semver 1.0.10",
  "serde",
  "serde_json",
- "sha2 0.9.9",
+ "sha2 0.10.1",
  "solang-parser",
  "svm-rs",
  "svm-rs-builds",
@@ -3779,6 +3779,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "cpufeatures",
  "digest 0.10.3",
+ "sha2-asm",
 ]
 
 [[package]]
