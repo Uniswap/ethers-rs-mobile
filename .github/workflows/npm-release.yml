@@ -6,23 +6,17 @@ on:
 jobs:
   deploy:
     name: release   
-	      runs-on:
-	      group: npm-deploy
-	    environment:
-	      name: release
-      # Load the right environment above
-      ###
+      runs-on:
+        group: npm-deploy
+    environment:
+      name: release
     steps:
       - name: Load secret
         uses: 1password/load-secrets-action@581a835fb51b8e7ec56b71cf2ffddd7e68bb25e0
         with:
-          # Export loaded secrets as environment variables
           export-env: true
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          # You may need to change this to your vault name and secret name
-          # Refer to it by calling env.NPM_TOKEN
-          # This token is also limited by IP to ONLY work on the runner
           NPM_TOKEN: op://npm-deploy/npm-runner-token/secret
      
       - name: Release
