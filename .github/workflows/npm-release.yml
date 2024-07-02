@@ -6,8 +6,8 @@ on:
 jobs:
   deploy:
     name: release   
-      runs-on:
-        group: npm-deploy
+    runs-on:
+      group: npm-deploy
     environment:
       name: release
     steps:
