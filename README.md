@@ -100,6 +100,37 @@ in the transactions which are fetched over JSON-RPC.
 - [ ] FFI Bindings (see note)
 - [ ] CLI for common operations
 
+## Uniswap Mobile Integration
+
+This is a Uniswap fork of ethers-rs used to build native FFI binaries for the Uniswap mobile app. Changes to this repo should be extremely infrequent — we expect to migrate away from this package before any further changes are needed.
+
+### How it works
+
+The `ethers-ffi` crate compiles to native `.so` (Android) and `.a`/`.xcframework` (iOS) binaries. The pre-built Android `.so` files are checked into this repo under `ethers-ffi/ethers-rs-mobile/android/jniLibs/`. **npm is not used** — the binaries are manually copied to the [universe](https://github.com/Uniswap/universe) monorepo.
+
+### Making changes
+
+If you need to update the native binaries:
+
+1. Make your code or config changes in this repo
+2. Build the Android `.so` files:
+   ```sh
+   cd ethers-ffi
+   make android
+   ```
+   This requires Android NDK 25.2 installed at `~/Library/Android/sdk/ndk/25.2.9519653/`.
+3. Verify 16KB page alignment (required for Android 15+):
+   ```sh
+   ./scripts/verify-android-alignment.sh
+   ```
+4. Commit the updated `.so` files to this repo
+5. Copy the `.so` files from `ethers-ffi/ethers-rs-mobile/android/jniLibs/` to the corresponding location in the universe monorepo
+6. For iOS, build and copy the `.xcframework` similarly (`make ios` from `ethers-ffi/`)
+
+### Android 16KB page size
+
+Google Play requires all apps targeting Android 15+ to support 16KB memory page sizes (enforced May 2026). The `.cargo/config.toml` at the workspace root passes `-z max-page-size=16384` to the linker for all Android targets. This config is intentionally at the workspace root (not inside `ethers-ffi/`) because Cargo's [hierarchical config resolution](https://doc.rust-lang.org/cargo/reference/config.html) walks up parent directories — placing it at the root ensures the flags apply regardless of whether you build from the workspace root or from `ethers-ffi/`.
+
 ## Note on WASM and FFI bindings
 
 You should be able to build a wasm app that uses ethers-rs (see the [example](./examples/ethers-wasm) for reference). If ethers fails to
