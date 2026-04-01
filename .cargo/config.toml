@@ -1,0 +1,13 @@
+# Android 16KB page size support (required for Google Play, Android 15+)
+# All LOAD segments in the .so must be aligned to 16KB (2^14)
+[target.aarch64-linux-android]
+rustflags = ["-Clink-arg=-z", "-Clink-arg=max-page-size=16384"]
+
+[target.armv7-linux-androideabi]
+rustflags = ["-Clink-arg=-z", "-Clink-arg=max-page-size=16384"]
+
+[target.i686-linux-android]
+rustflags = ["-Clink-arg=-z", "-Clink-arg=max-page-size=16384"]
+
+[target.x86_64-linux-android]
+rustflags = ["-Clink-arg=-z", "-Clink-arg=max-page-size=16384"]
